@@ -19,14 +19,28 @@
   - [Enable Basic Auth (with password) for ](#virtual_host_enable_basic_auth)endpoint resources
   - [Disable XSS (cross site script sharing)](#virtual_host_disable_xss)
 
-
 ## Useful Nginx Commands <a name="useful_commands"></a>
 ```
 # send reload singal for a new config to take an effect
 nginx -s reload
 
 # -t to test syntax of the config, which is specified by -c
-nginx -t -c /etc/nginx/nginx.conf
+nginx -t -c /etc/nginx/nginx_demo.com/nginx.conf
+```
+
+## Nginx Config Location for this demo
+For this demo purpose, we will leave the default Nginx config located at `/etc/nginx/nginx.conf` intact. Instead, we will create a `/etc/nginx/nginx_demo.com/` dir.
+```
+mkdir /etc/nginx/nginx_demo.com/
+
+# change ownership of all files and dirs, and group owner the folder to www-data, recursively
+chown www-data:www-data /etc/nginx/nginx_demo.com/ -R
+
+# create html content dir
+mkdir /var/www/nginx_demo.com
+
+# change ownership of all files and dirs, and group owner the folder to www-data, recursively
+chown www-data:www-data /var/www/nginx_demo.com -R
 ```
 
 ## Install and Run Nginx from package manager <a name="install_package_manager"></a>
@@ -385,7 +399,7 @@ Add endpoint resources to the virtual host `server{}` context:
     server_name nginx_demo.com;
 
     # set the root path from which a static request is being served
-    root /var/www/site;
+    root /var/www/nginx_demo.com;
 
 
     # exact match for resource
@@ -424,7 +438,7 @@ Add endpoint resources to the virtual host `server{}` context:
 ```
 Test syntax and reload the config:
 ```
-nginx -t -c /etc/nginx/demo/nginx.conf
+nginx -t -c /etc/nginx/nginx_demo.com/nginx.conf
 nginx -s reload
 ```
 
@@ -466,7 +480,7 @@ http {
 ```
 Test syntax and reload the config:
 ```
-nginx -t -c /etc/nginx/demo/nginx.conf
+nginx -t -c /etc/nginx/nginx_demo.com/nginx.conf
 nginx -s reload
 ```
 
@@ -495,14 +509,19 @@ http {
   server {
     # rewrite a request to /rewritten
     rewrite ^/rewrite /rewritten;
+
     location /rewritten {
         return 200 "hello from $uri \n";
     }
+
+    # another redirect example using regex - redirect any endpoint resources starting with "/" to domain2.com/$1
+    # ref: https://www.digitalocean.com/community/tutorials/how-to-create-temporary-and-permanent-redirects-with-nginx
+    # rewrite ^/(.*)$ http://www.domain2.com/$1 permanent;
   }
 }
 ```
 ```
-nginx -t -c /etc/nginx/demo/nginx.conf
+nginx -t -c /etc/nginx/nginx_demo.com/nginx.conf
 nginx -s reload
 curl localhost:8888/rewrite
 ````
@@ -582,7 +601,8 @@ location ~* \.(css|js|jpg|png)$ {
 ### Enable HTTPS <a name="virtual_host_enable_https"></a>
 First create a self signed certificate and a private key:
 ```
-mkdir /etc/nginx/demo/ssl
+mkdir /etc/ssl/private/nginx_demo.com
+mkdir /etc/ssl/certs/nginx_demo.com
 
 # create a private key and self-signed cert
 openssl req \
@@ -590,8 +610,8 @@ openssl req \
     -days 90 \
     -nodes \
     -newkey rsa:2048 \
-    -keyout /etc/nginx/demo/ssl/self.key \
-    -out /etc/nginx/demo/ssl/self.crt
+    -keyout /etc/ssl/private/nginx_demo.com/self.key \
+    -out /etc/ssl/certs/nginx_demo.com/self.crt
 ```
 
 Then configure HTTPs Virtual host to use the created cert and key:
@@ -601,8 +621,8 @@ server {
     listen 443 ssl;
 
     # enable HTTPS
-    ssl_certificate /etc/nginx/demo/ssl/self.crt;
-    ssl_certificate_key /etc/nginx/demo/ssl/self.key;
+    ssl_certificate /etc/ssl/private/nginx_demo.com/self.crt;
+    ssl_certificate_key /etc/ssl/certs/nginx_demo.com/self.key;
 }
 ```
 `curl https://localhost:443/ -k` should return:
@@ -649,7 +669,7 @@ The first response 301 and the line `Location: https://localhost//` confirms it'
 apt install apache2-utils -y
 
 # create a password using htpasswd command
-htpasswd -c /etc/nginx/demo/.htpasswd user1
+htpasswd -c /etc/nginx/nginx_demo.com/.htpasswd user1
 ```
 Modify `nginx.conf`
 ```
@@ -659,12 +679,12 @@ server {
   listen 443 ssl;
 
   # enable HTTPS
-  ssl_certificate /etc/nginx/demo/ssl/self.crt;
-  ssl_certificate_key /etc/nginx/demo/ssl/self.key;
+  ssl_certificate /etc/nginx/nginx_demo.com/ssl/self.crt;
+  ssl_certificate_key /etc/nginx/nginx_demo.com/ssl/self.key;
 
   # enable basic auth with password
   auth_basic "Password protected";
-  auth_basic_user_file /etc/nginx/demo/.htpasswd;
+  auth_basic_user_file /etc/nginx/nginx_demo.com/.htpasswd;
 }
 
 ```
