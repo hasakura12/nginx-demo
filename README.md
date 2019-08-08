@@ -1,4 +1,4 @@
-# Get Nginx Server Up and Running in Linux Ubuntu
+# Get Nginx Server Up and Running in Linux Ubuntu and Docker
 ## Index
 - [Useful Nginx Commands](#useful_commands)
 - [Install and Run Nginx from package manager](#install_package_manager)
@@ -18,6 +18,11 @@
   - [Redirect HTTP to HTTPS](#virtual_host_redirect_https)
   - [Enable Basic Auth (with password) for ](#virtual_host_enable_basic_auth)endpoint resources
   - [Disable XSS (cross site script sharing)](#virtual_host_disable_xss)
+- [Nginx Docker Demo](#nginx_docker)
+  - [Original Nginx Docker Image](#original_nginx)
+  - [Custom Nginx Docker Image with Dockerfile](#custom_nginx)
+  - [Using docker-compose](#nginx_docker_compose)
+
 
 ## Useful Nginx Commands <a name="useful_commands"></a>
 ```
@@ -723,6 +728,140 @@ X-XSS-Protection: 1; mode-block
 ``` 
 confirms XSS disabled.
 
+
+## Nginx Docker Demo <a name="nginx_docker"></a>
+#### Prerequisite: docker is installed
+Ref: [Official Nginx Docker Image](https://hub.docker.com/_/nginx)
+
+### Original Nginx Docker Image <a name="original_nginx"></a>
+Run a Nginx docker in backgroud, with a container name `nginx` and host port `8888` mapped to container port `80`
+```
+docker run -d --name nginx -p 8888:80 nginx
+```
+Now, you can `curl localhost:8888` to hit the webserver.
+
+Execute into the Nginx container to see what's inside:
+```
+docker exec -it nginx bash
+```
+Now you are inside the container
+```
+root@4b1d9eb5bba5:/# ls
+bin   dev  home  lib64	mnt  proc  run	 srv  tmp  var
+boot  etc  lib	 media	opt  root  sbin  sys  usr
+```
+You will find out that a `nginx.conf` is found at `/etc/nginx/nginx.conf`,  virtual host configs are at `/etc/nginx/conf.d/default.conf`, and html file is at `usr/share/nginx/html`.
+```
+cat /etc/nginx/conf.d/default.conf
+server {
+    listen       80;
+    server_name  localhost;
+
+    #charset koi8-r;
+    #access_log  /var/log/nginx/host.access.log  main;
+
+    location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+    }
+```
+By default, it listens on port 80 and the root doc is set to `/usr/share/nginx/html`.
+
+But we want to use our custom `nginx.conf` with ssl cert and whatnot.
+
+For now, let's stop and remove the running Nginx container:
+```
+docker stop nginx; docker rm nginx;
+```
+
+### Custom Nginx Docker Image <a name="custom_nginx"></a>
+We could attach local volumes in our host computer to a Nginx container so yweou can use the custom Nginx config and whatnot. But we need to create `/etc/ssl/...` and `/var/www/nginx_demo.com` etc before mapping local volumes. So we need to build a custom Nginx image first.
+
+[Dockerfile](Dockerfile) does a few things: make new dirs, copy files from our local host to a new image, and then start a nginx service.
+```
+FROM nginx
+CMD ["mkdir", "-p", "/etc/ssl/private/nginx_demo.com"]
+CMD ["mkdir", "-p", "/etc/ssl/certs/nginx_demo.com"]
+CMD ["mkdir", "-p", "/var/www/nginx_demo.com"]
+CMD ["mkdir", "-p", "/etc/nginx/nginx_demo.com"]
+
+COPY self.crt /etc/ssl/certs/nginx_demo.com/self.crt
+COPY self.key /etc/ssl/private/nginx_demo.com/self.key
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY .htpasswd /etc/nginx/nginx_demo.com/.htpasswd
+COPY index.html /var/www/nginx_demo.com/index.html
+
+CMD exec nginx -g 'daemon off;'
+```
+
+Let's build and run a new Nginx image:
+```
+# build a container image using Dockerfile in the current dir by passing "."
+docker build -t hasakura12/nginx .
+
+# let's map host port 443 to a container port 443, and run a container in background
+docker run \
+  --name nginx \
+  --rm \
+  -d \
+  -p 443:443 \
+  hasakura12/nginx
+
+# hit the Nginx server through port 443, assuming username and password are "user1"
+curl https://localhost:443 -k -u user1:user1
+```
+and you should get a response:
+```
+Hello from Nginx server.
+```
+
+### Custom Nginx Docker Image using docker-compose <a name="nginx_docker_compose"></a>
+#### Prerequisite: docker-compose cli is installed
+
+We could always run a docker container by the above
+```
+docker run \
+  --name nginx \
+  --rm \
+  -d \
+  -p 443:443 \
+  hasakura12/nginx
+```
+But we could store these arguments in `docker-compose.yaml` file so we could maintain different configurations of different docker images.`
+
+[docker-compose.yaml](docker-compose.yaml) does that exactly: mapping host to container port, specifying docker image, etc.
+```
+version: '3'
+services:
+  nginx:
+      image: hasakura12/nginx:latest
+      container_name: nginx
+      ports:
+          - 443:443
+          - 8888:8888
+      restart: always
+```
+
+All you need to do is simply run:
+```
+docker-compose up -d
+```
+
+If you want to stop the container, run:
+```
+docker-compose down
+```
+
+
+### Extra: passing commands to docker run command
+```
+docker run \
+  -d \
+  --name nginx \
+  nginx \
+  /bin/bash \
+  -c "echo hello; exec nginx -g 'daemon off;'"
+```
 
 ## Ref
 - [Nginx config pitfalls and best practices](https://www.nginx.com/resources/wiki/start/topics/tutorials/config_pitfalls/)

@@ -1,0 +1,9 @@
+version: '3'
+services:
+  nginx:
+      image: hasakura12/nginx:latest
+      container_name: nginx
+      ports:
+          - 443:443
+          - 8888:8888
+      restart: always
