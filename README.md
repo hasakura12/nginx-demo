@@ -863,5 +863,17 @@ docker run \
   -c "echo hello; exec nginx -g 'daemon off;'"
 ```
 
+### Push custom Nginx Docker image to your Dockerhub public repo
+```
+# tag existing image "hasakura12/nginx" as "hasakura12/nginx-demo:1.00" (DOCKERHUB_USERNAME/REPO_NAME:TAG_VERSION)
+docker tag hasakura12/nginx hasakura12/nginx-demo:1.00
+
+# login to dockerhub
+docker login
+
+
+docker push hasakura12/nginx-demo:1.00
+```
+
 ## Ref
 - [Nginx config pitfalls and best practices](https://www.nginx.com/resources/wiki/start/topics/tutorials/config_pitfalls/)
