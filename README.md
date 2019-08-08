@@ -827,7 +827,7 @@ docker run \
   -p 443:443 \
   hasakura12/nginx
 ```
-But we could store these arguments in `docker-compose.yaml` file so we could maintain different configurations of different docker images.`
+But we could store these arguments in `docker-compose.yaml` file so we could maintain different configurations of different docker images.
 
 [docker-compose.yaml](docker-compose.yaml) does that exactly: mapping host to container port, specifying docker image, etc.
 ```
@@ -870,7 +870,6 @@ docker tag hasakura12/nginx hasakura12/nginx-demo:1.00
 
 # login to dockerhub
 docker login
-
 
 docker push hasakura12/nginx-demo:1.00
 ```
