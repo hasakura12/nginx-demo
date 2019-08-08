@@ -22,6 +22,8 @@
   - [Original Nginx Docker Image](#original_nginx)
   - [Custom Nginx Docker Image with Dockerfile](#custom_nginx)
   - [Using docker-compose](#nginx_docker_compose)
+- [Ref: best practices and pitfalls](#best_practice_pitfalls)
+- [What's next (run Nginx in Kubernetes cluster!)](#whats_next)
 
 
 ## Useful Nginx Commands <a name="useful_commands"></a>
@@ -874,5 +876,9 @@ docker login
 docker push hasakura12/nginx-demo:1.00
 ```
 
-## Ref
+## Ref <a name="best_practice_pitfalls"></a>
 - [Nginx config pitfalls and best practices](https://www.nginx.com/resources/wiki/start/topics/tutorials/config_pitfalls/)
+
+## What's Next?? <a name="whats_next"></a>
+Try running Nginx containers in Kubernetes!
+I have another [demo for AWS EKS (Elastic Kubernetes Service)](https://github.com/hasakura12/aws-eks-demo) using Terraform.
