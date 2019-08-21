@@ -802,7 +802,7 @@ docker stop nginx; docker rm nginx;
 ```
 
 ### Custom Nginx Docker Image <a name="custom_nginx"></a>
-We could attach local volumes in our host computer to a Nginx container so yweou can use the custom Nginx config and whatnot. But we need to create `/etc/ssl/...` and `/var/www/nginx_demo.com` etc before mapping local volumes. So we need to build a custom Nginx image first.
+We could attach local volumes in our host computer to a Nginx container so we can use the custom Nginx config and whatnot. But we need to create `/etc/ssl/...` and `/var/www/nginx_demo.com` etc before mapping local volumes. So we need to build a custom Nginx image first.
 
 [Dockerfile](Dockerfile) does a few things: make new dirs, copy files from our local host to a new image, and then start a nginx service.
 ```
