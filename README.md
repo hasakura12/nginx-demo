@@ -735,15 +735,19 @@ confirms XSS disabled.
 [The Nginx doc](https://serverpilot.io/docs/how-to-enable-nginx-http-stub-status-module)
 ```
 server {
+  listen 127.0.0.1:8081;
+
+  # stub status - this will be exposed so other monitoring solution like Prometheus can scrape data
+  # for example, we could use NGINX Prometheus Exporter (https://github.com/nginxinc/nginx-prometheus-exporter)
   location /nginx_status {
-    stub_status;
+      stub_status;
   }
 }
 ```
 
 Verify
 ```
-$ curl https://nginx_demo.com/nginx_status -k -u user1:user1
+$ curl http://nginx_demo.com:8081/nginx_status -k -u user1:user1
 
 Active connections: 1
 server accepts handled requests
