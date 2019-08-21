@@ -18,6 +18,7 @@
   - [Redirect HTTP to HTTPS](#virtual_host_redirect_https)
   - [Enable Basic Auth (with password) for ](#virtual_host_enable_basic_auth)endpoint resources
   - [Disable XSS (cross site script sharing)](#virtual_host_disable_xss)
+  - [Add Stub Status Monitoring](#monitoring)
 - [Nginx Docker Demo](#nginx_docker)
   - [Original Nginx Docker Image](#original_nginx)
   - [Custom Nginx Docker Image with Dockerfile](#custom_nginx)
@@ -729,6 +730,26 @@ X-Frame-Options: SAMEORIGIN
 X-XSS-Protection: 1; mode-block
 ``` 
 confirms XSS disabled.
+
+### Add Stub Status Monitoring <a name="monitoring"></a>
+[The Nginx doc](https://serverpilot.io/docs/how-to-enable-nginx-http-stub-status-module)
+```
+server {
+  location /nginx_status {
+    stub_status;
+  }
+}
+```
+
+Verify
+```
+$ curl https://nginx_demo.com/nginx_status -k -u user1:user1
+
+Active connections: 1
+server accepts handled requests
+ 18 18 15
+Reading: 0 Writing: 1 Waiting: 0
+```
 
 
 ## Nginx Docker Demo <a name="nginx_docker"></a>
