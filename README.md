@@ -1046,6 +1046,13 @@ confirms XSS disabled.
 
 ### Add Stub Status Monitoring <a name="monitoring"></a>
 [The Nginx doc](https://serverpilot.io/docs/how-to-enable-nginx-http-stub-status-module)
+
+First make sure the module is enabled
+```
+$ nginx -V 2>&1 | grep -o with-http_stub_status_module
+with-http_stub_status_module
+```
+Then expose a new endpoint
 ```
 server {
   listen 127.0.0.1:8081;
@@ -1067,6 +1074,39 @@ server accepts handled requests
  18 18 15
 Reading: 0 Writing: 1 Waiting: 0
 ```
+
+Now third party monitoring tools can utilize infor available at `/nginx_status` endpoint.
+
+One of them that we'll use to demonstrait is [amplify](https://www.tecmint.com/amplify-nginx-monitoring-tool/).
+
+Configure log format:
+```
+http {
+    # custom log format for third-party monitoring
+  log_format main_ext '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for" '
+                      '"$host" sn="$server_name" ' 'rt=$request_time '
+                      'ua="$upstream_addr" us="$upstream_status" '
+                      'ut="$upstream_response_time" ul="$upstream_response_length" '
+                      'cs=$upstream_cache_status' ;
+                      'upstream_cache_status=$upstream_cache_status' ;
+  access_log /var/log/nginx/access.log main_ext;
+  error_log /var/log/nginx/error.log warn;
+}
+```
+Sign up for a free account at `https://amplify.nginx.com`, then execute two commands
+```
+$ curl -L -O https://github.com/nginxinc/nginx-amplify-agent/raw/master/packages/install.sh
+
+$ API_KEY='YOUR_API_KEY' sh ./install.sh
+```
+![alt text](imgs/amplify_dashboard_1.png "Cache Diagram")
+![alt text](imgs/amplify_dashboard_2.png "Cache Diagram")
+
+Refs
+- [Total Nginx monitoring, with application performance and a bit more, using Telegraf/InfluxDB/Grafana](https://medium.com/faun/total-nginx-monitoring-with-application-performance-and-a-bit-more-using-8fc6d731051b)
+- [MONITORING NGINX: THE ESSENTIAL GUIDE](https://www.scalyr.com/blog/how-to-monitor-nginx-the-essential-guide/)
 
 
 ## Nginx Docker Demo <a name="nginx_docker"></a>
