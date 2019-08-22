@@ -1045,7 +1045,9 @@ X-XSS-Protection: 1; mode-block
 confirms XSS disabled.
 
 ### Add Stub Status Monitoring <a name="monitoring"></a>
-[The Nginx doc](https://serverpilot.io/docs/how-to-enable-nginx-http-stub-status-module)
+Refs
+- [The Nginx doc](https://serverpilot.io/docs/how-to-enable-nginx-http-stub-status-module)
+- [NGINX METRICS: AN IN-DEPTH GUIDE](https://www.scalyr.com/blog/an-in-depth-guide-to-nginx-metrics/)
 
 First make sure the module is enabled
 ```
