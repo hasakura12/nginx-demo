@@ -14,6 +14,7 @@
   - [Disable access log example](#virtual_host_disable_access_log)
   - [Enable GZIP for faster response](#virtual_host_gzip)
   - [Enable caching](#virtual_host_enable_cache)
+    - [How to test caching by Apache Bench and Siege](#cache_testing)
   - [Enable HTTPS](#virtual_host_enable_https)
   - [Redirect HTTP to HTTPS](#virtual_host_redirect_https)
   - [Enable Basic Auth (with password) for ](#virtual_host_enable_basic_auth)endpoint resources
@@ -676,7 +677,7 @@ http {
 }
 ```
 
-#### How to test caching
+#### How to test caching using Apache Bench and Siege <a name="cache_testing"></a>
 Comment out cacheing parts
 ```
 http {
@@ -847,6 +848,75 @@ from
 Requests per second:    2.49 [#/sec] (mean)
 Time per request:       1202.429 [ms] (mean)
 Time per request:       400.810 [ms] (mean, across all concurrent requests)
+```
+
+Other tool we could use is `siege`
+```
+apt install siege
+```
+Make five concurrent requests and run the test twice
+```
+siege -v -r 2 -c 5 http://nginx_demo.com:8888/index.php
+```
+When caching is disabled, it would return
+```
+** SIEGE 3.0.8
+** Preparing 5 concurrent users for battle.
+The server is now under siege...
+HTTP/1.1 200   1.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   1.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   1.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   1.38 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   1.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   1.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   1.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   1.37 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   1.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   1.01 secs:      57 bytes ==> GET  /index.php
+done.
+
+Transactions:		          10 hits
+Availability:		      100.00 %
+Elapsed time:		        4.01 secs
+Data transferred:	        0.00 MB
+Response time:		        1.08 secs
+Transaction rate:	        2.49 trans/sec
+Throughput:		        0.00 MB/sec
+Concurrency:		        2.68
+Successful transactions:          10
+Failed transactions:	           0
+Longest transaction:	        1.38
+Shortest transaction:	        1.00
+```
+Whereas cache-enabled Nginx would return
+```
+** SIEGE 3.0.8
+** Preparing 5 concurrent users for battle.
+The server is now under siege...
+HTTP/1.1 200   0.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   0.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   0.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   0.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   0.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   0.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   0.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   0.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   0.00 secs:      57 bytes ==> GET  /index.php
+HTTP/1.1 200   0.00 secs:      57 bytes ==> GET  /index.php
+done.
+
+Transactions:		          10 hits
+Availability:		      100.00 %
+Elapsed time:		        2.00 secs
+Data transferred:	        0.00 MB
+Response time:		        0.00 secs
+Transaction rate:	        5.00 trans/sec
+Throughput:		        0.00 MB/sec
+Concurrency:		        0.00
+Successful transactions:          10
+Failed transactions:	           0
+Longest transaction:	        0.00
+Shortest transaction:	        0.00
 ```
 
 ### Enable HTTPS <a name="virtual_host_enable_https"></a>
