@@ -1145,6 +1145,7 @@ docker run \
   --rm \
   -d \
   -p 443:443 \
+  -p 8888:8888 \
   hasakura12/nginx
 
 # hit the Nginx server through port 443, assuming username and password are "user1"
