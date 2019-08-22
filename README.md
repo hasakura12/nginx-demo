@@ -591,7 +591,20 @@ Look at the last line:
 `Content-Encoding: gzip`.
 
 ### Enable caching <a name="virtual_host_enable_cache"></a>
+
+##### Nginx Cache Flow
+![alt text](imgs/nginx_cache_diagram.png "Cache Diagram")
+
+##### Nginx Cache Hash Key
+![alt text](imgs/nginx_cache_hash_key.png "Cache Hash Key")
+
+##### Nginx Cache Priority
+![alt text](imgs/nginx_cache_priority.png "Cache Priority")
+
+#### Enable caching for a browser
 ```
+
+
 # disable access log for .css/js/jpg/png extentions
 location ~* \.(css|js|jpg|png)$ {
     # return header attributes
@@ -604,6 +617,236 @@ location ~* \.(css|js|jpg|png)$ {
     access_log off;
     return 200 "hello from $uri, access log is disabled. \n";
 }
+```
+
+#### Enable Nginx in-memory
+Refs
+- [Nginx Caching Tutorial - You Can Run Faster](http://czerasz.com/2015/03/30/nginx-caching-tutorial/)
+- [Understanding Nginx HTTP Proxying, Load Balancing, Buffering, and Caching](https://www.digitalocean.com/community/tutorials/understanding-nginx-http-proxying-load-balancing-buffering-and-caching)
+- [Nginx PHP FastCGI Example](https://www.nginx.com/resources/wiki/start/topics/examples/phpfcgi/)
+```
+http {
+  # Define in-memory caches and its location
+  proxy_cache_path /tmp/nginx_proxy_cache keys_zone=proxy_cache_zone:10m levels=1:2 inactive=600s max_size=700m;
+
+  # fast CGI cacheing for PHP
+  fastcgi_cache_path /tmp/nginx_fastcgi_cache/ levels=1:2 keys_zone=fastcgi_cache_zone:100m inactive=60m;
+  fastcgi_cache_key "$scheme$request_method$host$request_uri";
+
+  server {
+    # by default Nginx listens to port 80
+    listen 443 ssl http2;
+
+    # Cache PHP by default
+    set $fastcgi_no_cache 0;
+
+    # enable in-memory cache for all endpoints
+    # ref: http://czerasz.com/2015/03/30/nginx-caching-tutorial/
+    proxy_cache proxy_cache_zone;
+    proxy_cache_valid 200 10m;
+    proxy_cache_methods GET HEAD;
+    # indicator as to whether the client is explicitly requesting a fresh, non-cached version of the resource.
+    proxy_cache_bypass $http_cache_control;
+    add_header X-Cache $upstream_cache_status;
+
+    # reverse proxy
+    location /proxy {
+        # reverse proxy: should end with trailing /
+        # specify upstream name to enable load balancing
+        proxy_pass http://php_servers;
+
+        # set header for proxy request because add_header won't propagate to proxy header
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        # include fastcgi-php.conf;
+        include ../fastcgi.conf;
+        # Pass php requests to the php-fpm service (fastcgi)
+        # fastcgi_pass unix:/run/php/php7.0-fpm.sock;
+
+        # Enable php cache
+        fastcgi_cache fastcgi_cache_zone;
+        fastcgi_cache_valid 200 60m;
+        fastcgi_cache_bypass $fastcgi_no_cache;
+        fastcgi_no_cache $fastcgi_no_cache;
+    }
+  }
+}
+```
+
+#### How to test caching
+Comment out cacheing parts
+```
+http {
+  server {
+      listen 8888;
+
+      root /var/www/nginx_demo.com;
+
+      # Cache PHP by default
+      set $fastcgi_no_cache 0;
+      add_header X-Cache $upstream_cache_status;
+      
+      location ~\.php$ {
+          include fastcgi.conf;
+          fastcgi_pass unix:/run/php/php7.0-fpm.sock;
+
+          if ($arg_skipcache=1) {
+            set $fastcgi_no_cache 1;
+          }
+
+          ## Enable php cache
+          #fastcgi_cache fastcgi_cache_zone;
+          #fastcgi_cache_valid 200 60m;
+          ##fastcgi_cache_bypass $fastcgi_no_cache;
+          #fastcgi_no_cache $fastcgi_no_cache;
+      }
+  }
+}
+```
+Hitting the `/index.php` should takes one sec because [index.php](index.php) sleeps one second.
+```
+curl localhost:8888/index.php
+
+# use Apache bench tool
+apt install apache2-utils
+# for yum
+# yum install httpd-tools
+```
+Make 3 connections concurrently for total 10 requests
+```
+ab -n 10 -c 3 http://nginx_demo.com:8888/index.php
+```
+should return 
+```
+Benchmarking nginx_demo.com (be patient).....done
+
+
+Server Software:        nginx/1.10.3
+Server Hostname:        nginx_demo.com
+Server Port:            8888
+
+Document Path:          /index.php
+Document Length:        38 bytes
+
+Concurrency Level:      3
+Time taken for tests:   4.008 seconds
+Complete requests:      10
+Failed requests:        0
+Total transferred:      1840 bytes
+HTML transferred:       380 bytes
+Requests per second:    2.49 [#/sec] (mean)
+Time per request:       1202.429 [ms] (mean)
+Time per request:       400.810 [ms] (mean, across all concurrent requests)
+Transfer rate:          0.45 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    1   0.4      0       1
+Processing:  1001 1001   0.4   1001    1002
+Waiting:     1001 1001   0.2   1001    1001
+Total:       1001 1002   0.5   1002    1003
+ERROR: The median and mean for the initial connection time are more than twice the standard
+       deviation apart. These results are NOT reliable.
+
+Percentage of the requests served within a certain time (ms)
+  50%   1002
+  66%   1002
+  75%   1002
+  80%   1003
+  90%   1003
+  95%   1003
+  98%   1003
+  99%   1003
+ 100%   1003 (longest request)
+```
+The important metrics being
+```
+Requests per second:    2.49 [#/sec] (mean)
+Time per request:       1202.429 [ms] (mean)
+Time per request:       400.810 [ms] (mean, across all concurrent requests)
+```
+
+Now uncomment cache parts
+```
+http {
+  server {
+    location ~\.php$ {
+        # Enable php cache
+        fastcgi_cache fastcgi_cache_zone;
+        fastcgi_cache_valid 200 60m;
+        fastcgi_cache_bypass $fastcgi_no_cache;
+        fastcgi_no_cache $fastcgi_no_cache;
+    }
+  }
+}
+```
+Reload Nginx config
+```
+nginx -s stop
+nginx -c /etc/nginx/nginx_demo.com/nginx.conf
+```
+Make 3 connections concurrently for total 10 requests
+```
+ab -n 10 -c 3 http://nginx_demo.com:8888/index.php
+```
+should return 
+```
+Benchmarking nginx_demo.com (be patient).....done
+
+
+Server Software:        nginx/1.10.3
+Server Hostname:        nginx_demo.com
+Server Port:            8888
+
+Document Path:          /index.php
+Document Length:        38 bytes
+
+Concurrency Level:      3
+Time taken for tests:   0.002 seconds
+Complete requests:      10
+Failed requests:        0
+Total transferred:      1980 bytes
+HTML transferred:       380 bytes
+Requests per second:    4810.00 [#/sec] (mean)
+Time per request:       0.624 [ms] (mean)
+Time per request:       0.208 [ms] (mean, across all concurrent requests)
+Transfer rate:          930.06 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.1      0       0
+Processing:     0    0   0.1      0       0
+Waiting:        0    0   0.1      0       0
+Total:          0    1   0.1      0       1
+ERROR: The median and mean for the total time are more than twice the standard
+       deviation apart. These results are NOT reliable.
+
+Percentage of the requests served within a certain time (ms)
+  50%      0
+  66%      0
+  75%      1
+  80%      1
+  90%      1
+  95%      1
+  98%      1
+  99%      1
+ 100%      1 (longest request)
+```
+
+Notice the performance improvement 
+```
+Requests per second:    4810.00 [#/sec] (mean)
+Time per request:       0.624 [ms] (mean)
+Time per request:       0.208 [ms] (mean, across all concurrent requests)
+```
+from 
+```
+Requests per second:    2.49 [#/sec] (mean)
+Time per request:       1202.429 [ms] (mean)
+Time per request:       400.810 [ms] (mean, across all concurrent requests)
 ```
 
 ### Enable HTTPS <a name="virtual_host_enable_https"></a>
