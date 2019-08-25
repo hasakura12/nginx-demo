@@ -6,4 +6,5 @@ services:
       ports:
           - 443:443
           - 8888:8888
+          - 8081:8081
       restart: always
